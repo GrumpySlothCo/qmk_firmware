@@ -6,7 +6,44 @@
         "rows": 6,
         "cols": 18
     },
-    "menus": ["qmk_rgb_matrix"],
+    "menus": [
+        "qmk_rgb_matrix",
+        {
+            "label": "Indicators",
+            "content": [
+                {
+                    "label": "Caps Lock",
+                    "content": [
+                        {
+                            "label": "Enable LED",
+                            "type": "toggle",
+                            "content": ["id_custom_channel", 1, 1]
+                        }
+                    ]
+                },
+                {
+                    "label": "Num Lock",
+                    "content": [
+                        {
+                            "label": "Enable LED",
+                            "type": "toggle",
+                            "content": ["id_custom_channel", 2, 1]
+                        }
+                    ]
+                },
+                {
+                    "label": "Scroll Lock",
+                    "content": [
+                        {
+                            "label": "Enable LED",
+                            "type": "toggle",
+                            "content": ["id_custom_channel", 3, 1]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
     "layouts": {
         "keymap": [
             [

@@ -14,6 +14,78 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include QMK_KEYBOARD_H
+#include "via.h"
+
+typedef union {
+    uint32_t raw;
+    struct {
+        bool caps_lock_indicator   : 1;
+        bool num_lock_indicator    : 1;
+        bool scroll_lock_indicator : 1;
+    };
+} user_config_t;
+
+user_config_t user_config;
+
+void eeconfig_init_user(void) {
+    user_config.raw                  = 0;
+    user_config.caps_lock_indicator   = true;
+    user_config.num_lock_indicator    = true;
+    user_config.scroll_lock_indicator = true;
+    eeconfig_update_user(user_config.raw);
+}
+
+void keyboard_post_init_user(void) {
+    user_config.raw = eeconfig_read_user();
+}
+
+enum indicator_value_id {
+    id_caps_lock_indicator   = 1,
+    id_num_lock_indicator    = 2,
+    id_scroll_lock_indicator = 3,
+};
+
+void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
+    uint8_t *command_id = &(data[0]);
+    uint8_t *channel_id = &(data[1]);
+    uint8_t *value_id   = &(data[2]);
+    uint8_t *value_data = &(data[3]);
+
+    if (*channel_id == id_custom_channel) {
+        switch (*value_id) {
+            case id_caps_lock_indicator:
+                if (*command_id == id_custom_get_value) {
+                    *value_data = user_config.caps_lock_indicator;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.caps_lock_indicator = *value_data;
+                    eeconfig_update_user(user_config.raw);
+                }
+                break;
+            case id_num_lock_indicator:
+                if (*command_id == id_custom_get_value) {
+                    *value_data = user_config.num_lock_indicator;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.num_lock_indicator = *value_data;
+                    eeconfig_update_user(user_config.raw);
+                }
+                break;
+            case id_scroll_lock_indicator:
+                if (*command_id == id_custom_get_value) {
+                    *value_data = user_config.scroll_lock_indicator;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.scroll_lock_indicator = *value_data;
+                    eeconfig_update_user(user_config.raw);
+                }
+                break;
+            default:
+                *command_id = id_unhandled;
+                break;
+        }
+        return;
+    }
+
+    *command_id = id_unhandled;
+}
 
 enum layers {
     _BL1,
@@ -51,7 +123,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_LCTL, KC_LOPT, KC_LCMD,                            KC_SPC,                             KC_RCMD, KC_ROPT, MO(_BL1_Fn), KC_RCTL,    KC_LEFT,     KC_DOWN, KC_RGHT,    KC_P0,              KC_PDOT
     ),
     [_BL2] = LAYOUT_fullsize_ansi(
-        KC_ESC,           KC_BRID, KC_BRIU, KC_MCTL, KC_LPAD, RGB_VAD, RGB_VAI, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD,     KC_VOLU,    SCMD(KC_5),  KC_F14,  KC_F15,     KC_F16,   KC_F17,   KC_F18,   KC_F19,
+        KC_ESC,           KC_BRID, KC_BRIU, KC_MCTL, KC_LPAD, RM_VALD, RM_VALU, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD,     KC_VOLU,    SCMD(KC_5),  KC_F14,  KC_F15,     KC_F16,   KC_F17,   KC_F18,   KC_F19,
 
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     _______, _______,    _______,  _______,  _______,  _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     _______, _______,    _______,  _______,  _______,  _______,
@@ -60,12 +132,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______,                            _______,                            _______, _______, MO(_BL2_Fn), _______,    _______,     _______, _______,    _______,            _______
     ),
     [_BL1_Fn] = LAYOUT_fullsize_ansi(
-        EE_CLR,           KC_BRID, KC_BRIU, KC_MCTL, KC_LPAD, RGB_VAD, RGB_VAI, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD,     KC_VOLU,    SCMD(KC_5),  _______, _______,    _______,  _______,  _______,  _______,
+        EE_CLR,           KC_BRID, KC_BRIU, KC_MCTL, KC_LPAD, RM_VALD, RM_VALU, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD,     KC_VOLU,    SCMD(KC_5),  _______, _______,    _______,  _______,  _______,  _______,
 
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     RGB_HUI, RGB_SAI,    _______,  _______,  _______,  _______,
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     RGB_HUD, RGB_SAD,    RGB_MOD,  RGB_SPI,  _______,  _______,
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,              _______,                                      RGB_RMOD, RGB_SPD,  _______,
-        _______,          _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,              _______,                 _______,             RGB_TOG,  _______,  _______,  _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     RM_HUEU, RM_SATU,    _______,  _______,  _______,  _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,     _______,    _______,     RM_HUED, RM_SATD,    RM_NEXT,  RM_SPDU,  _______,  _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,              _______,                                      RM_PREV,  RM_SPDD,  _______,
+        _______,          _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,              _______,                 _______,             RM_TOGG,  _______,  _______,  _______,
         _______, _______, _______,                            _______,                            _______, _______, _______,     _______,    _______,     _______, _______,    _______,            _______
     ),
     [_BL2_Fn] = LAYOUT_fullsize_ansi(
@@ -89,9 +161,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    if (host_keyboard_led_state().caps_lock) {
+    if (user_config.caps_lock_indicator && host_keyboard_led_state().caps_lock) {
         uint8_t i = g_led_config.matrix_co[3][8];
         if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 255, 0, 0);
+    }
+    if (user_config.num_lock_indicator && host_keyboard_led_state().num_lock) {
+        uint8_t i = g_led_config.matrix_co[2][1];
+        if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 0, 255, 0);
+    }
+    if (user_config.scroll_lock_indicator && host_keyboard_led_state().scroll_lock) {
+        uint8_t i = g_led_config.matrix_co[0][14];
+        if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 0, 0, 255);
     }
     return false;
 }
