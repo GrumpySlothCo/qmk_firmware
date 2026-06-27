@@ -52,6 +52,9 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     uint8_t *value_data = &(data[3]);
 
     if (*channel_id == id_custom_channel) {
+        if (*command_id == id_custom_save) {
+            return;
+        }
         switch (*value_id) {
             case id_caps_lock_indicator:
                 if (*command_id == id_custom_get_value) {
