@@ -17,7 +17,7 @@
                         {
                             "label": "Enable LED",
                             "type": "toggle",
-                            "content": ["id_custom_channel", 1, 1]
+                            "content": [0, 1, 1]
                         }
                     ]
                 },
@@ -27,7 +27,7 @@
                         {
                             "label": "Enable LED",
                             "type": "toggle",
-                            "content": ["id_custom_channel", 2, 1]
+                            "content": [0, 2, 1]
                         }
                     ]
                 },
@@ -37,7 +37,7 @@
                         {
                             "label": "Enable LED",
                             "type": "toggle",
-                            "content": ["id_custom_channel", 3, 1]
+                            "content": [0, 3, 1]
                         }
                     ]
                 }
