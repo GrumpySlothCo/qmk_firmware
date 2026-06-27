@@ -16,33 +16,44 @@
 #include QMK_KEYBOARD_H
 #include "via.h"
 
-typedef union {
-    uint32_t raw;
-    struct {
-        bool caps_lock_indicator   : 1;
-        bool num_lock_indicator    : 1;
-        bool scroll_lock_indicator : 1;
-    };
+typedef struct {
+    bool    caps_lock_indicator;
+    bool    num_lock_indicator;
+    bool    scroll_lock_indicator;
+    uint8_t caps_lock_hue;
+    uint8_t caps_lock_sat;
+    uint8_t num_lock_hue;
+    uint8_t num_lock_sat;
+    uint8_t scroll_lock_hue;
+    uint8_t scroll_lock_sat;
 } user_config_t;
 
 user_config_t user_config;
 
 void eeconfig_init_user(void) {
-    user_config.raw                  = 0;
     user_config.caps_lock_indicator   = true;
     user_config.num_lock_indicator    = true;
     user_config.scroll_lock_indicator = true;
-    eeconfig_update_user(user_config.raw);
+    user_config.caps_lock_hue         = 0;
+    user_config.caps_lock_sat         = 255;
+    user_config.num_lock_hue          = 85;
+    user_config.num_lock_sat          = 255;
+    user_config.scroll_lock_hue       = 170;
+    user_config.scroll_lock_sat       = 255;
+    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
 }
 
 void keyboard_post_init_user(void) {
-    user_config.raw = eeconfig_read_user();
+    eeconfig_read_user_datablock(&user_config, 0, sizeof(user_config_t));
 }
 
 enum indicator_value_id {
     id_caps_lock_indicator   = 1,
     id_num_lock_indicator    = 2,
     id_scroll_lock_indicator = 3,
+    id_caps_lock_color       = 4,
+    id_num_lock_color        = 5,
+    id_scroll_lock_color     = 6,
 };
 
 void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
@@ -61,7 +72,7 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
                     *value_data = user_config.caps_lock_indicator;
                 } else if (*command_id == id_custom_set_value) {
                     user_config.caps_lock_indicator = *value_data;
-                    eeconfig_update_user(user_config.raw);
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
                 }
                 break;
             case id_num_lock_indicator:
@@ -69,7 +80,7 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
                     *value_data = user_config.num_lock_indicator;
                 } else if (*command_id == id_custom_set_value) {
                     user_config.num_lock_indicator = *value_data;
-                    eeconfig_update_user(user_config.raw);
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
                 }
                 break;
             case id_scroll_lock_indicator:
@@ -77,7 +88,37 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
                     *value_data = user_config.scroll_lock_indicator;
                 } else if (*command_id == id_custom_set_value) {
                     user_config.scroll_lock_indicator = *value_data;
-                    eeconfig_update_user(user_config.raw);
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
+                }
+                break;
+            case id_caps_lock_color:
+                if (*command_id == id_custom_get_value) {
+                    value_data[0] = user_config.caps_lock_hue;
+                    value_data[1] = user_config.caps_lock_sat;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.caps_lock_hue = value_data[0];
+                    user_config.caps_lock_sat = value_data[1];
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
+                }
+                break;
+            case id_num_lock_color:
+                if (*command_id == id_custom_get_value) {
+                    value_data[0] = user_config.num_lock_hue;
+                    value_data[1] = user_config.num_lock_sat;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.num_lock_hue = value_data[0];
+                    user_config.num_lock_sat = value_data[1];
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
+                }
+                break;
+            case id_scroll_lock_color:
+                if (*command_id == id_custom_get_value) {
+                    value_data[0] = user_config.scroll_lock_hue;
+                    value_data[1] = user_config.scroll_lock_sat;
+                } else if (*command_id == id_custom_set_value) {
+                    user_config.scroll_lock_hue = value_data[0];
+                    user_config.scroll_lock_sat = value_data[1];
+                    eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
                 }
                 break;
             default:
@@ -134,17 +175,30 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    uint8_t val = rgb_matrix_get_val();
     if (user_config.caps_lock_indicator && host_keyboard_led_state().caps_lock) {
         uint8_t i = g_led_config.matrix_co[3][8];
-        if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 255, 0, 0);
+        if (i >= led_min && i < led_max) {
+            HSV hsv = {user_config.caps_lock_hue, user_config.caps_lock_sat, val};
+            RGB rgb = hsv_to_rgb(hsv);
+            rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        }
     }
     if (user_config.num_lock_indicator && host_keyboard_led_state().num_lock) {
         uint8_t i = g_led_config.matrix_co[2][1];
-        if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 0, 255, 0);
+        if (i >= led_min && i < led_max) {
+            HSV hsv = {user_config.num_lock_hue, user_config.num_lock_sat, val};
+            RGB rgb = hsv_to_rgb(hsv);
+            rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        }
     }
     if (user_config.scroll_lock_indicator && host_keyboard_led_state().scroll_lock) {
         uint8_t i = g_led_config.matrix_co[0][14];
-        if (i >= led_min && i < led_max) rgb_matrix_set_color(i, 0, 0, 255);
+        if (i >= led_min && i < led_max) {
+            HSV hsv = {user_config.scroll_lock_hue, user_config.scroll_lock_sat, val};
+            RGB rgb = hsv_to_rgb(hsv);
+            rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        }
     }
     return false;
 }
