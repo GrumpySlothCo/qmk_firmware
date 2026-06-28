@@ -26,6 +26,7 @@ typedef struct {
     uint8_t num_lock_sat;
     uint8_t scroll_lock_hue;
     uint8_t scroll_lock_sat;
+    uint8_t variant_id;
 } user_config_t;
 
 user_config_t user_config;
@@ -40,11 +41,16 @@ void eeconfig_init_user(void) {
     user_config.num_lock_sat          = 255;
     user_config.scroll_lock_hue       = 170;
     user_config.scroll_lock_sat       = 255;
+    user_config.variant_id            = SLIM_SLOTH_VARIANT_ID;
     eeconfig_update_user_datablock(&user_config, 0, sizeof(user_config_t));
 }
 
 void keyboard_post_init_user(void) {
     eeconfig_read_user_datablock(&user_config, 0, sizeof(user_config_t));
+    if (user_config.variant_id != SLIM_SLOTH_VARIANT_ID) {
+        eeconfig_init();
+        dynamic_keymap_reset();
+    }
 }
 
 enum indicator_value_id {
@@ -131,6 +137,24 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     *command_id = id_unhandled;
 }
 
+static uint16_t boot_timer        = 0;
+static bool     boot_combo_active = false;
+
+void matrix_scan_user(void) {
+    if (matrix_is_on(5, 5) && matrix_is_on(4, 6) && matrix_is_on(4, 17)) {
+        if (!boot_combo_active) {
+            boot_combo_active = true;
+            boot_timer        = timer_read();
+        } else if (timer_elapsed(boot_timer) >= 500) {
+            clear_keyboard();
+            wait_ms(100);
+            bootloader_jump();
+        }
+    } else {
+        boot_combo_active = false;
+    }
+}
+
 enum layers {
     _BL,
     _RGBL
@@ -164,7 +188,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_LCTL, KC_LGUI, KC_LALT,                            KC_SPC,                             KC_RALT, MO(_RGBL), KC_APP,  KC_RCTL,    KC_LEFT, KC_DOWN, KC_RGHT,    KC_P0,            KC_PDOT
     ),
     [_RGBL] = LAYOUT_fullsize_ansi(
-        EE_CLR,           _______, _______, _______, _______, _______, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD, KC_VOLU, KC_CALC, _______, _______, _______, _______,  _______,  _______,  _______,
+        _______,          _______, _______, _______, _______, _______, KC_MPRV, KC_MPLY, KC_MNXT, KC_MUTE, KC_VOLD, KC_VOLU, KC_CALC, _______, _______, _______, _______,  _______,  _______,  _______,
 
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_HUEU, RM_SATU, RM_VALU, _______,  _______,  _______,  _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_HUED, RM_SATD, RM_VALD, RM_NEXT,  RM_SPDU,  _______,  _______,
